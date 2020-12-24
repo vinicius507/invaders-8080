@@ -278,6 +278,10 @@ int Disassembler(unsigned char *codebuffer, int pc) {
    case 0xfe: printf("CPI  #$%02x",code[1]); opbytes = 2; break;
    case 0xff: printf("RST  7"); break;
   }
+  
+  printf("\n");
+
+  return opbytes;
 }
 
 int main(int argc, char *argv[]) {
