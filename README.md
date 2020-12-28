@@ -1,4 +1,4 @@
-# Just Another 8080 Emulator(C)
+# Just Another Space Invaders 8080 Emulator(C)
 
 An Intel 8080 Emulator for the game Space Invaders.
 
