@@ -319,7 +319,7 @@ int Emulate(State *state) {
   
   switch (*opcode) {
       case 0x00: break; // NOP
-      case 0x01: //LXI  B,word 
+      case 0x01: // LXI  B,word | B <- word  
          state->c = opcode[1];
          state->b = opcode[2];
          state->pc += 2;
@@ -387,9 +387,15 @@ int Emulate(State *state) {
       case 0x3e: UnimplementedInstruiction(state); break;
       case 0x3f: UnimplementedInstruiction(state); break;
       case 0x40: UnimplementedInstruiction(state); break;
-      case 0x41: UnimplementedInstruiction(state); break;
-      case 0x42: UnimplementedInstruiction(state); break;
-      case 0x43: UnimplementedInstruiction(state); break;
+      case 0x41:  // MOV B,C | B <- C 
+         state->b = state->c;
+         break;
+      case 0x42:  // MOV B,C | B <- D 
+         state->b = state->d; 
+         break;
+      case 0x43:  // MOV B,C | B <- E 
+         state->b = state->e; 
+         break;
       case 0x44: UnimplementedInstruiction(state); break;
       case 0x45: UnimplementedInstruiction(state); break;
       case 0x46: UnimplementedInstruiction(state); break;
@@ -450,14 +456,76 @@ int Emulate(State *state) {
       case 0x7d: UnimplementedInstruiction(state); break;
       case 0x7e: UnimplementedInstruiction(state); break;
       case 0x7f: UnimplementedInstruiction(state); break;
-      case 0x80: UnimplementedInstruiction(state); break;
-      case 0x81: UnimplementedInstruiction(state); break;
-      case 0x82: UnimplementedInstruiction(state); break;
-      case 0x83: UnimplementedInstruiction(state); break;
-      case 0x84: UnimplementedInstruiction(state); break;
-      case 0x85: UnimplementedInstruiction(state); break;
-      case 0x86: UnimplementedInstruiction(state); break;
-      case 0x87: UnimplementedInstruiction(state); break;
+      case 0x80:  // ADD B | A <- A+B | A is a special register sometimes called accumulator.
+         // Do the math with higher precision so we can capture the
+         // carry out. 
+         uint16_t ans = (uint16_t) state->a + (uint16_t) state->b;
+         // Flags
+         state->cc.z = ((ans & 0xff) == 0); // Zero Flag
+         state->cc.s = ((ans & 0x80) != 0);  // Bit 7 Flag
+         state->cc.cy = (ans > 0xff); // Carry Flag
+         // The parity flag is handled by a subroutine.
+         state->cc.p = Parity(ans & 0xff);
+         
+         state->a = ans & 0xff;
+         break;
+      case 0x81: // ADD C | A <- A+C 
+        uint16_t ans= (uint16_t)state->a + (uint16_t)state->c;
+        state->cc.z = ((ans & 0xff) == 0);
+        state->cc.s = ((ans & 0x80) != 0);
+        state->cc.cy = (ans > 0xff);
+        state->cc.p = Parity(ans & 0xff);
+        state->a = ans & 0xff;
+        break;
+      case 0x82: // ADD D | A <- A+D 
+        uint16_t ans= (uint16_t)state->a + (uint16_t)state->d;
+        state->cc.z = ((ans & 0xff) == 0);
+        state->cc.s = ((ans & 0x80) != 0);
+        state->cc.cy = (ans > 0xff);
+        state->cc.p = Parity(ans & 0xff);
+        state->a = ans & 0xff;
+        break;
+      case 0x83: // ADD D | A <- A+E 
+        uint16_t ans= (uint16_t)state->a + (uint16_t)state->e;
+        state->cc.z = ((ans & 0xff) == 0);
+        state->cc.s = ((ans & 0x80) != 0);
+        state->cc.cy = (ans > 0xff);
+        state->cc.p = Parity(ans & 0xff);
+        state->a = ans & 0xff;
+        break;
+      case 0x84: // ADD D | A <- A+H 
+        uint16_t ans= (uint16_t)state->a + (uint16_t)state->h;
+        state->cc.z = ((ans & 0xff) == 0);
+        state->cc.s = ((ans & 0x80) != 0);
+        state->cc.cy = (ans > 0xff);
+        state->cc.p = Parity(ans & 0xff);
+        state->a = ans & 0xff;
+        break;
+      case 0x85: // ADD D | A <- A+L 
+        uint16_t ans= (uint16_t)state->a + (uint16_t)state->l;
+        state->cc.z = ((ans & 0xff) == 0);
+        state->cc.s = ((ans & 0x80) != 0);
+        state->cc.cy = (ans > 0xff);
+        state->cc.p = Parity(ans & 0xff);
+        state->a = ans & 0xff;
+        break;
+      case 0x86: // ADD M | A <- A+(HL)
+        uint16_t offset = (state->h << 8) | (state->l);
+        uint16_t ans= (uint16_t)state->a + (uint16_t)state->memory[offset];
+        state->cc.z = ((ans & 0xff) == 0);
+        state->cc.s = ((ans & 0x80) != 0);
+        state->cc.cy = (ans > 0xff);
+        state->cc.p = Parity(ans & 0xff);
+        state->a = ans & 0xff;
+        break;
+      case 0x87: // ADD A | A <- A+A 
+        uint16_t ans= (uint16_t)state->a + (uint16_t)state->a;
+        state->cc.z = ((ans & 0xff) == 0);
+        state->cc.s = ((ans & 0x80) != 0);
+        state->cc.cy = (ans > 0xff);
+        state->cc.p = Parity(ans & 0xff);
+        state->a = ans & 0xff;
+        break;
       case 0x88: UnimplementedInstruiction(state); break;
       case 0x89: UnimplementedInstruiction(state); break;
       case 0x8a: UnimplementedInstruiction(state); break;
@@ -520,7 +588,14 @@ int Emulate(State *state) {
       case 0xc3: UnimplementedInstruiction(state); break;
       case 0xc4: UnimplementedInstruiction(state); break;
       case 0xc5: UnimplementedInstruiction(state); break;
-      case 0xc6: UnimplementedInstruiction(state); break;
+      case 0xc6:
+        uint16_t ans = (uint16_t)state->a + (uint16_t)opcode[1];
+        state->cc.z = ((ans & 0xff) == 0);
+        state->cc.s = ((ans & 0x80) != 0);
+        state->cc.cy = (ans > 0xff);
+        state->cc.p = Parity(ans & 0xff);
+        state->a = ans & 0xff;
+        break;
       case 0xc7: UnimplementedInstruiction(state); break;
       case 0xc8: UnimplementedInstruiction(state); break;
       case 0xc9: UnimplementedInstruiction(state); break;
