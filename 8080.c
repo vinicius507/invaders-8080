@@ -15,9 +15,22 @@ Branch Group
   PCHL (move HL to PC)  
   RST (pushes the return address to the stack then jumps to a predetermined
        low-memory address)
-Logical Group
- AND, OR, CMA, CMC(affects CY flag!!), XOR  (bitwise operations),
- 
+Logical Group (bitwise operations)
+  AND, ANA, ANI, 
+  XOR, XRA, XRI, 
+  OR, ORA, ORI, 
+  CMP, CPI, (compare) 
+  CMA, CMC (affects CY flag!!),
+  RLC, RRC, RAL, RAR (shift bits),
+  STC (set carry)
+IO and Special Group
+  EI, DI (enable/disable the processors ability to process interrupts),
+  RIM, SIM (used for serial I/O ? gonna look at it after space invaders emulation),
+  HLT (halt),
+  IN, OUT (implement to skip over its data byte for now), 
+  NOP (no operation, one use for it is to pad timing, it takes 4 CPU cycles to execute)
+Stack Group
+  PUSH, POP (work only on register pairs)
 */
 
 #include <stdint.h>
@@ -26,29 +39,28 @@ Logical Group
 #include <string.h>
 
 typedef struct ConditionCodes {
-   uint8_t z:1;
-   uint8_t s:1;
-   uint8_t p:1;
-   uint8_t cy:1;
-   uint8_t ac:1;
-   uint8_t pad:3;
+  uint8_t z : 1;
+  uint8_t s : 1;
+  uint8_t p : 1;
+  uint8_t cy : 1;
+  uint8_t ac : 1;
+  uint8_t pad : 3;
 } ConditionCodes;
 
 typedef struct State {
-   uint8_t a;
-   uint8_t b;
-   uint8_t c;
-   uint8_t d;
-   uint8_t e;
-   uint8_t h;
-   uint8_t l;
-   uint16_t sp;
-   uint16_t pc;
-   uint8_t *memory;
-   ConditionCodes cc;
-   uint8_t  int_enable;
+  uint8_t a;
+  uint8_t b;
+  uint8_t c;
+  uint8_t d;
+  uint8_t e;
+  uint8_t h;
+  uint8_t l;
+  uint16_t sp;
+  uint16_t pc;
+  uint8_t *memory;
+  ConditionCodes cc;
+  uint8_t int_enable;
 } State;
-
 
 int Disassemble(unsigned char *codebuffer, int pc) {
   unsigned char *code = &codebuffer[pc];
@@ -359,7 +371,11 @@ int Emulate(State *state) {
       case 0x0c: UnimplementedInstruiction(state); break;
       case 0x0d: UnimplementedInstruiction(state); break;
       case 0x0e: UnimplementedInstruiction(state); break;
-      case 0x0f: UnimplementedInstruiction(state); break;
+      case 0x0f: // RRC | A <- 0bA0A7A6A5A4A3A2A1
+        uint8_t aux = state->a;
+        state->a = ((aux & 1) << 7) | (aux >> 1);
+        state->cc.cy = (1 == (aux & 1));
+        break;
       case 0x10: UnimplementedInstruiction(state); break;
       case 0x11: UnimplementedInstruiction(state); break;
       case 0x12: UnimplementedInstruiction(state); break;
@@ -375,7 +391,11 @@ int Emulate(State *state) {
       case 0x1c: UnimplementedInstruiction(state); break;
       case 0x1d: UnimplementedInstruiction(state); break;
       case 0x1e: UnimplementedInstruiction(state); break;
-      case 0x1f: UnimplementedInstruiction(state); break;
+      case 0x1f: // RAR | A <- 0bCA7A6A5A4A3A2A1
+        uint8_t aux = state->a;
+        state->a = (state->cc.cy << 7) | (aux >> 1);
+        state->cc.cy = (1 == (aux & 1));
+        break;
       case 0x20: UnimplementedInstruiction(state); break;
       case 0x21: UnimplementedInstruiction(state); break;
       case 0x22: UnimplementedInstruiction(state); break;
@@ -607,7 +627,11 @@ int Emulate(State *state) {
       case 0xbe: UnimplementedInstruiction(state); break;
       case 0xbf: UnimplementedInstruiction(state); break;
       case 0xc0: UnimplementedInstruiction(state); break;
-      case 0xc1: UnimplementedInstruiction(state); break;
+      case 0xc1: // POP B
+        state->c = state->memory[state->sp];
+        state->b = state->memory[state->sp + 1];
+        state->sp += 2;
+        break;
       case 0xc2: // JNZ addr | JMP if zero flag
         if (0 == state->cc.z)
           state->pc = (opcode[2] << 8) | opcode[1];
@@ -618,7 +642,11 @@ int Emulate(State *state) {
         state->pc = (opcode[2]<<8) | opcode[1];
         break;
       case 0xc4: UnimplementedInstruiction(state); break;
-      case 0xc5: UnimplementedInstruiction(state); break;
+      case 0xc5: // PUSH B
+        state->memory[state->sp-1] = state->b;
+        state->memory[state->sp-2] = state->c;
+        state->sp -= 2;
+        break;
       case 0xc6:
         uint16_t ans = (uint16_t)state->a + (uint16_t)opcode[1];
         state->cc.z = ((ans & 0xff) == 0);
@@ -686,7 +714,14 @@ int Emulate(State *state) {
       case 0xee: UnimplementedInstruiction(state); break;
       case 0xef: UnimplementedInstruiction(state); break;
       case 0xf0: UnimplementedInstruiction(state); break;
-      case 0xf1: UnimplementedInstruiction(state); break;
+      case 0xf1: // POP PSW
+        state->a = state->memory[state->sp+1];
+        uint8_t psw = state->memory[state->sp];
+        state->cc.cy = (0x01 == (psw & 0x01));
+        state->cc.p = (0x04 == (psw & 0x04));
+        state->cc.ac = (0x10 == (psw & 0x10));
+        state->cc.z = (0x40 == (psw & 0x40));
+        state->cc.s = (0x80 == (psw & 0x80)); 
       case 0xf2: UnimplementedInstruiction(state); break;
       case 0xf3: UnimplementedInstruiction(state); break;
       case 0xf4: UnimplementedInstruiction(state); break;
@@ -699,7 +734,14 @@ int Emulate(State *state) {
       case 0xfb: UnimplementedInstruiction(state); break;
       case 0xfc: UnimplementedInstruiction(state); break;
       case 0xfd: UnimplementedInstruiction(state); break;
-      case 0xfe: UnimplementedInstruiction(state); break;
+      case 0xfe:
+        uint8_t aux = state->a - opcode[1];
+        state->cc.z = (aux == 0);
+        state->cc.s = (0x80 == (aux & 0x80));
+        state->cc.p = parity(aux, 8);
+        state->cc.cy = (state->a < opcode[1]);
+        state->pc++;
+        break;
       case 0xff: UnimplementedInstruiction(state); break;
   }
   
