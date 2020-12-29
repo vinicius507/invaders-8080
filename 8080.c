@@ -1,3 +1,25 @@
+/*
+Arithimetic Group 
+  ADD, ADC, ACI, SBB, SUI,
+  INX, DCX (effect register pairs, do not effect the flags),
+  DAD (register pair function, only affects the carry flag),
+  INR, DCR (do not affect the carry flag).
+Branch Group
+  JMP (unconditionally branches to the target address),
+  CALL, RET (CALL will push the adress of the instruction after the call onto the stack, then jumps to target address,
+            RET gets an address off the stack and stores it into PC).
+  JNZ, JZ, CZ, CNZ, RZ, RNZ for Zero Flag
+  JNC, JC, CNC, CC, RNC, RC for Carry Flag
+  JPO, JPE, CPO, CPE, RPO, RPE for Parity Flag
+  JP, JM, CP, CM, RP, RM for Sign 
+  PCHL (move HL to PC)  
+  RST (pushes the return address to the stack then jumps to a predetermined
+       low-memory address)
+Logical Group
+ AND, OR, CMA, CMC(affects CY flag!!), XOR  (bitwise operations),
+ 
+*/
+
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -369,7 +391,9 @@ int Emulate(State *state) {
       case 0x2c: UnimplementedInstruiction(state); break;
       case 0x2d: UnimplementedInstruiction(state); break;
       case 0x2e: UnimplementedInstruiction(state); break;
-      case 0x2f: UnimplementedInstruiction(state); break;
+      case 0x2f: // CMA (not)
+        state->a = ~state->a;
+        break;
       case 0x30: UnimplementedInstruiction(state); break;
       case 0x31: UnimplementedInstruiction(state); break;
       case 0x32: UnimplementedInstruiction(state); break;
@@ -465,7 +489,7 @@ int Emulate(State *state) {
          state->cc.s = ((ans & 0x80) != 0);  // Bit 7 Flag
          state->cc.cy = (ans > 0xff); // Carry Flag
          // The parity flag is handled by a subroutine.
-         state->cc.p = Parity(ans & 0xff);
+         state->cc.p = parity(ans & 0xff, 8);
          
          state->a = ans & 0xff;
          break;
@@ -474,7 +498,7 @@ int Emulate(State *state) {
         state->cc.z = ((ans & 0xff) == 0);
         state->cc.s = ((ans & 0x80) != 0);
         state->cc.cy = (ans > 0xff);
-        state->cc.p = Parity(ans & 0xff);
+        state->cc.p = parity(ans & 0xff, 8);
         state->a = ans & 0xff;
         break;
       case 0x82: // ADD D | A <- A+D 
@@ -482,7 +506,7 @@ int Emulate(State *state) {
         state->cc.z = ((ans & 0xff) == 0);
         state->cc.s = ((ans & 0x80) != 0);
         state->cc.cy = (ans > 0xff);
-        state->cc.p = Parity(ans & 0xff);
+        state->cc.p = parity(ans & 0xff, 8);
         state->a = ans & 0xff;
         break;
       case 0x83: // ADD D | A <- A+E 
@@ -490,7 +514,7 @@ int Emulate(State *state) {
         state->cc.z = ((ans & 0xff) == 0);
         state->cc.s = ((ans & 0x80) != 0);
         state->cc.cy = (ans > 0xff);
-        state->cc.p = Parity(ans & 0xff);
+        state->cc.p = parity(ans & 0xff, 8);
         state->a = ans & 0xff;
         break;
       case 0x84: // ADD D | A <- A+H 
@@ -498,7 +522,7 @@ int Emulate(State *state) {
         state->cc.z = ((ans & 0xff) == 0);
         state->cc.s = ((ans & 0x80) != 0);
         state->cc.cy = (ans > 0xff);
-        state->cc.p = Parity(ans & 0xff);
+        state->cc.p = parity(ans & 0xff, 8);
         state->a = ans & 0xff;
         break;
       case 0x85: // ADD D | A <- A+L 
@@ -506,7 +530,7 @@ int Emulate(State *state) {
         state->cc.z = ((ans & 0xff) == 0);
         state->cc.s = ((ans & 0x80) != 0);
         state->cc.cy = (ans > 0xff);
-        state->cc.p = Parity(ans & 0xff);
+        state->cc.p = parity(ans & 0xff, 8);
         state->a = ans & 0xff;
         break;
       case 0x86: // ADD M | A <- A+(HL)
@@ -515,7 +539,7 @@ int Emulate(State *state) {
         state->cc.z = ((ans & 0xff) == 0);
         state->cc.s = ((ans & 0x80) != 0);
         state->cc.cy = (ans > 0xff);
-        state->cc.p = Parity(ans & 0xff);
+        state->cc.p = parity(ans & 0xff, 8);
         state->a = ans & 0xff;
         break;
       case 0x87: // ADD A | A <- A+A 
@@ -523,7 +547,7 @@ int Emulate(State *state) {
         state->cc.z = ((ans & 0xff) == 0);
         state->cc.s = ((ans & 0x80) != 0);
         state->cc.cy = (ans > 0xff);
-        state->cc.p = Parity(ans & 0xff);
+        state->cc.p = parity(ans & 0xff, 8);
         state->a = ans & 0xff;
         break;
       case 0x88: UnimplementedInstruiction(state); break;
@@ -584,8 +608,15 @@ int Emulate(State *state) {
       case 0xbf: UnimplementedInstruiction(state); break;
       case 0xc0: UnimplementedInstruiction(state); break;
       case 0xc1: UnimplementedInstruiction(state); break;
-      case 0xc2: UnimplementedInstruiction(state); break;
-      case 0xc3: UnimplementedInstruiction(state); break;
+      case 0xc2: // JNZ addr | JMP if zero flag
+        if (0 == state->cc.z)
+          state->pc = (opcode[2] << 8) | opcode[1];
+        else
+          state->pc += 2;
+          break;
+      case 0xc3: // JMP addr 
+        state->pc = (opcode[2]<<8) | opcode[1];
+        break;
       case 0xc4: UnimplementedInstruiction(state); break;
       case 0xc5: UnimplementedInstruiction(state); break;
       case 0xc6:
@@ -593,16 +624,25 @@ int Emulate(State *state) {
         state->cc.z = ((ans & 0xff) == 0);
         state->cc.s = ((ans & 0x80) != 0);
         state->cc.cy = (ans > 0xff);
-        state->cc.p = Parity(ans & 0xff);
+        state->cc.p = parity(ans & 0xff, 8);
         state->a = ans & 0xff;
         break;
       case 0xc7: UnimplementedInstruiction(state); break;
       case 0xc8: UnimplementedInstruiction(state); break;
-      case 0xc9: UnimplementedInstruiction(state); break;
+      case 0xc9: // RET addr
+        state->pc = state->memory[state->sp] | (state->memory[state->sp+1]<<8);
+        state->sp += 2;
+        break;
       case 0xca: UnimplementedInstruiction(state); break;
       case 0xcb: UnimplementedInstruiction(state); break;
       case 0xcc: UnimplementedInstruiction(state); break;
-      case 0xcd: UnimplementedInstruiction(state); break;
+      case 0xcd: // CALL addr
+        uint16_t ret = state->pc+2;
+        state->memory[state->sp-1] = (ret >> 8) & 0xff;
+        state->memory[state->sp-2] = (ret & 0xff);
+        state->sp = state->sp - 2;
+        state->pc = (opcode[2] << 8) | opcode[1];
+        break;
       case 0xce: UnimplementedInstruiction(state); break;
       case 0xcf: UnimplementedInstruiction(state); break;
       case 0xd0: UnimplementedInstruiction(state); break;
@@ -627,7 +667,15 @@ int Emulate(State *state) {
       case 0xe3: UnimplementedInstruiction(state); break;
       case 0xe4: UnimplementedInstruiction(state); break;
       case 0xe5: UnimplementedInstruiction(state); break;
-      case 0xe6: UnimplementedInstruiction(state); break;
+      case 0xe6: // ANI byte
+        uint8_t ans = state->a & opcode[1];
+        state->cc.z = (ans == 0);
+        state->cc.s = (0x80 == (ans & 0x80));
+        state->cc.p = parity(ans, 8);
+        state->cc.cy = 0;
+        state->a = ans;
+        state->pc++;
+        break;
       case 0xe7: UnimplementedInstruiction(state); break;
       case 0xe8: UnimplementedInstruiction(state); break;
       case 0xe9: UnimplementedInstruiction(state); break;
