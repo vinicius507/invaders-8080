@@ -71,12 +71,12 @@ int Disassemble(unsigned char *codebuffer, int pc) {
   switch (*code) {
    // group BC
    case 0x00: printf("NOP"); break;
-   case 0x01: printf("LXI   B,#$%02x%02x", code[2], code[1]); opbytes = 3; break;
-   case 0x02: printf("STAX  B"); break;
-   case 0x03: printf("INX   B"); break;
-   case 0x04: printf("INR   B"); break;
-   case 0x05: printf("DCR   B"); break;
-   case 0x06: printf("MVI   B,#$%02x", code[1]); opbytes = 2; break;
+   case 0x01: printf("LXI  B,#$%02x%02x", code[2], code[1]); opbytes = 3; break;
+   case 0x02: printf("STAX B"); break;
+   case 0x03: printf("INX  B"); break;
+   case 0x04: printf("INR  B"); break;
+   case 0x05: printf("DCR  B"); break;
+   case 0x06: printf("MVI  B,#$%02x", code[1]); opbytes = 2; break;
    case 0x07: printf("RLC"); break;
    case 0x09: printf("DAD  B"); break;
    case 0x0a: printf("LDAX B"); break;
@@ -375,7 +375,11 @@ int Emulate(State *state) {
       case 0x03: UnimplementedInstruction(state); break;
       case 0x04: UnimplementedInstruction(state); break;
       case 0x05: UnimplementedInstruction(state); break;
-      case 0x06: UnimplementedInstruction(state); break;
+      case 0x06: // MVI B,byte
+      {
+        state->b = opcode[1];
+        state->pc++;
+      } break;
       case 0x07: UnimplementedInstruction(state); break;
       case 0x08: UnimplementedInstruction(state); break;
       case 0x09: UnimplementedInstruction(state); break;
@@ -401,7 +405,13 @@ int Emulate(State *state) {
       case 0x18: UnimplementedInstruction(state); break;
       case 0x19: UnimplementedInstruction(state); break;
       case 0x1a: UnimplementedInstruction(state); break;
-      case 0x1b: UnimplementedInstruction(state); break;
+      case 0x1b: // DCX D
+      {
+        uint16_t aux = (state->d<<8) | (state->e);
+        aux--;
+        state->d = (aux>>8 & 0xff);
+        state->e = (aux & 0xff);
+      } break;
       case 0x1c: UnimplementedInstruction(state); break;
       case 0x1d: UnimplementedInstruction(state); break;
       case 0x1e: UnimplementedInstruction(state); break;
@@ -415,7 +425,15 @@ int Emulate(State *state) {
       case 0x21: UnimplementedInstruction(state); break;
       case 0x22: UnimplementedInstruction(state); break;
       case 0x23: UnimplementedInstruction(state); break;
-      case 0x24: UnimplementedInstruction(state); break;
+      case 0x24:  // INR H
+      {
+        state->h++;
+        uint8_t aux = state->h;
+        state->cc.z = ((aux & 0xff) == 0);
+        state->cc.s = (0x80 == (aux & 0x80));
+        state->cc.p = parity(aux & 0xff, 8);
+        state->cc.ac = (aux > 0x09);
+      } break;
       case 0x25: UnimplementedInstruction(state); break;
       case 0x26: UnimplementedInstruction(state); break;
       case 0x27: UnimplementedInstruction(state); break;
