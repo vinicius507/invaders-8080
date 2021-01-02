@@ -1,6 +1,7 @@
 # Just Another Space Invaders(i8080) Emulator(C)
 
 An Intel 8080 Emulator for the game Space Invaders.
+In the future I'll build a full blown i8080 emulator.
 
 **TODO**
 ----
