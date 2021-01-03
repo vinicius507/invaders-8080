@@ -978,7 +978,6 @@ int main(int argc, char *argv[]) {
   
   int done;
   int instruction_num = 0;
-  int test = 0;
   do {
     instruction_num++;
     printf("Instruction: %d\n", instruction_num);
@@ -1001,10 +1000,6 @@ int main(int argc, char *argv[]) {
           , state->cc.p ? "p" : "."
           , state->cc.ac ? "ac" : "."
           , state->int_enable ? "i" : ".");
-    /* if (state->cc.p == 1) */
-    /*   test=1; */
-    /* if (test==1) */
-    /*   getchar(); */
   } while(done == 0);
   
   return 0;
