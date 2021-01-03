@@ -313,21 +313,19 @@ void UnimplementedInstruction(State *state) {
   exit(1);
 }
 
-int parity(int x, int size) {
-  int p = 0;
-  x = (x & ((1<<size) - 1));
-  for (int i = 0; i < size; i++) {
-    if (x & 0x1) p++;
-    x = x>>1;
+int parity(int x) {
+  int p = 1;
+  while(x) {
+    p = ~p; 
+    x = x & (x-1);
   }
-  return (0 == (p & 0x1));
+  return p;
 }
 
 int Emulate(State *state) {
   unsigned char *opcode = &state->memory[state->pc];
   Disassemble(state->memory, state->pc); 
   state->pc+=1;
-  /* getchar(); */
   switch (*opcode) {
       case 0x00: break; // NOP
       case 0x01:        // LXI  B,word | B <- word
@@ -344,7 +342,7 @@ int Emulate(State *state) {
         uint8_t aux = state->b -1;
         state->cc.z = (aux == 0);
         state->cc.s = (0x80 == (aux & 0x80));
-        state->cc.p = parity(aux, 8);
+        state->cc.p = parity(aux);
         state->b = aux;
       } break;
       case 0x06: // MVI B,byte
@@ -371,7 +369,7 @@ int Emulate(State *state) {
         uint8_t aux = state->c - 1;
         state->cc.z = (aux == 0);
         state->cc.s = (0x80 == (aux & 0x80));
-        state->cc.p = parity(aux,8);
+        state->cc.p = parity(aux);
         state->c = aux;
       } break;
       case 0x0e: // MVI C,byte
@@ -456,7 +454,7 @@ int Emulate(State *state) {
         uint8_t aux = state->h;
         state->cc.z = ((aux & 0xff) == 0);
         state->cc.s = (0x80 == (aux & 0x80));
-        state->cc.p = parity(aux & 0xff, 8);
+        state->cc.p = parity(aux & 0xff);
         state->cc.ac = (aux > 0x09);
       } break;
       case 0x25: UnimplementedInstruction(state); break;
@@ -581,6 +579,7 @@ int Emulate(State *state) {
       case 0x66: // MOV H,M
       {
         uint16_t offset = (state->h<<8) | (state->l);
+        state->h = state->memory[offset];
       } break;
       case 0x67: UnimplementedInstruction(state); break;
       case 0x68: UnimplementedInstruction(state); break;
@@ -621,7 +620,11 @@ int Emulate(State *state) {
         state->a = state->h;
       } break;
       case 0x7d: UnimplementedInstruction(state); break;
-      case 0x7e: UnimplementedInstruction(state); break;
+      case 0x7e: // MOV A,M
+      {
+        uint16_t offset = (state->h<<8) | (state->l);
+        state->a = state->memory[offset];
+      } break;
       case 0x7f: UnimplementedInstruction(state); break;
       case 0x80:  // ADD B | A <- A+B | A is a special register sometimes called accumulator.
       {
@@ -629,7 +632,7 @@ int Emulate(State *state) {
           state->cc.z = ((ans & 0xff) == 0);  // Zero Flag
           state->cc.s = ((ans & 0x80) != 0);  // Bit 7 Flag
           state->cc.cy = (ans > 0xff);        // Carry Flag
-          state->cc.p = parity(ans & 0xff, 8);
+          state->cc.p = parity(ans & 0xff);
           state->a = ans & 0xff;
       } break;
       case 0x81:  // ADD C | A <- A+C
@@ -638,7 +641,7 @@ int Emulate(State *state) {
         state->cc.z = ((ans & 0xff) == 0);
         state->cc.s = ((ans & 0x80) != 0);
         state->cc.cy = (ans > 0xff);
-        state->cc.p = parity(ans & 0xff, 8);
+        state->cc.p = parity(ans & 0xff);
         state->a = ans & 0xff;
       } break;
       case 0x82:  // ADD D | A <- A+D
@@ -647,7 +650,7 @@ int Emulate(State *state) {
         state->cc.z = ((ans & 0xff) == 0);
         state->cc.s = ((ans & 0x80) != 0);
         state->cc.cy = (ans > 0xff);
-        state->cc.p = parity(ans & 0xff, 8);
+        state->cc.p = parity(ans & 0xff);
         state->a = ans & 0xff;
       } break;
       case 0x83:  // ADD D | A <- A+E
@@ -656,7 +659,7 @@ int Emulate(State *state) {
         state->cc.z = ((ans & 0xff) == 0);
         state->cc.s = ((ans & 0x80) != 0);
         state->cc.cy = (ans > 0xff);
-        state->cc.p = parity(ans & 0xff, 8);
+        state->cc.p = parity(ans & 0xff);
         state->a = ans & 0xff;
       } break;
       case 0x84:  // ADD D | A <- A+H
@@ -665,7 +668,7 @@ int Emulate(State *state) {
         state->cc.z = ((ans & 0xff) == 0);
         state->cc.s = ((ans & 0x80) != 0);
         state->cc.cy = (ans > 0xff);
-        state->cc.p = parity(ans & 0xff, 8);
+        state->cc.p = parity(ans & 0xff);
         state->a = ans & 0xff;
       } break;
       case 0x85:  // ADD D | A <- A+L
@@ -674,7 +677,7 @@ int Emulate(State *state) {
         state->cc.z = ((ans & 0xff) == 0);
         state->cc.s = ((ans & 0x80) != 0);
         state->cc.cy = (ans > 0xff);
-        state->cc.p = parity(ans & 0xff, 8);
+        state->cc.p = parity(ans & 0xff);
         state->a = ans & 0xff;
       } break;
       case 0x86:  // ADD M | A <- A+(HL)
@@ -684,7 +687,7 @@ int Emulate(State *state) {
         state->cc.z = ((ans & 0xff) == 0);
         state->cc.s = ((ans & 0x80) != 0);
         state->cc.cy = (ans > 0xff);
-        state->cc.p = parity(ans & 0xff, 8);
+        state->cc.p = parity(ans & 0xff);
         state->a = ans & 0xff;
       } break;
       case 0x87:  // ADD A | A <- A+A
@@ -693,7 +696,7 @@ int Emulate(State *state) {
         state->cc.z = ((ans & 0xff) == 0);
         state->cc.s = ((ans & 0x80) != 0);
         state->cc.cy = (ans > 0xff);
-        state->cc.p = parity(ans & 0xff, 8);
+        state->cc.p = parity(ans & 0xff);
         state->a = ans & 0xff;
       } break;
       case 0x88: UnimplementedInstruction(state); break;
@@ -732,7 +735,7 @@ int Emulate(State *state) {
         state->a = (state->a & state->a);
         state->cc.z = (state->a == 0);
         state->cc.s = ((state->a & 0x80) != 0);
-        state->cc.p = parity(state->a, 8);
+        state->cc.p = parity(state->a);
         state->cc.cy = 0;
         state->cc.ac = 0;
       } break;
@@ -748,7 +751,7 @@ int Emulate(State *state) {
         state->a = (state->a ^ state->a);
         state->cc.z = (state->a == 0);
         state->cc.s = ((state->a & 0x80) != 0);
-        state->cc.p = parity(state->a, 8);
+        state->cc.p = parity(state->a);
         state->cc.cy = 0;
         state->cc.ac = 0;
       } break;
@@ -794,12 +797,14 @@ int Emulate(State *state) {
         state->sp -= 2;
       } break;
       case 0xc6: { //ADI byte
-        uint16_t ans = (uint16_t)state->a + (uint16_t)opcode[1];
-        state->cc.z = ((ans & 0xff) == 0);
-        state->cc.s = ((ans & 0x80) == 0x80);
-        state->cc.cy = (ans > 0xff);
-        state->cc.p = parity(ans & 0xff, 8);
-        state->a = ans & 0xff;
+        uint16_t aux = state->a + opcode[1];
+        state->cc.z = ((aux & 0xff) == 0);
+        state->cc.s = ((aux & 0x80) == 0x80);
+        state->cc.cy = (aux > 0xff);
+        state->cc.p = parity(aux&0xff);
+        printf("\n%04X\n", aux);
+        state->a = aux & 0xff;
+        state->pc++;
       } break;
       case 0xc7: UnimplementedInstruction(state); break;
       case 0xc8: UnimplementedInstruction(state); break;
@@ -856,6 +861,7 @@ int Emulate(State *state) {
       {
         state->h = state->memory[state->sp+1];
         state->l = state->memory[state->sp];
+        state->sp+=2;
       } break;
       case 0xe2: UnimplementedInstruction(state); break;
       case 0xe3: UnimplementedInstruction(state); break;
@@ -871,7 +877,7 @@ int Emulate(State *state) {
         uint8_t ans = state->a & opcode[1];
         state->cc.z = (ans == 0);
         state->cc.s = (0x80 == (ans & 0x80));
-        state->cc.p = parity(ans, 8);
+        state->cc.p = parity(ans);
         state->cc.cy = 0;
         state->a = ans;
         state->pc++;
@@ -934,7 +940,7 @@ int Emulate(State *state) {
         uint8_t aux = state->a - opcode[1];
         state->cc.z = (aux == 0);
         state->cc.s = (0x80 == (aux & 0x80));
-        state->cc.p = parity(aux, 8);
+        state->cc.p = parity(aux);
         state->cc.cy = (state->a < opcode[1]);
         state->pc++;
       } break;
@@ -972,11 +978,12 @@ int main(int argc, char *argv[]) {
   
   int done;
   int instruction_num = 0;
+  int test = 0;
   do {
     instruction_num++;
-    printf("\tInstruction: %d\n", instruction_num);
+    printf("Instruction: %d\n", instruction_num);
     done = Emulate(state);
-    printf("\ta %02X b %02X c %02X d %02X e %02X h %02X l %02X pc %04X sp %04X\n"
+    printf("\ta %02X bc %02X%02X de %02X%02X hl %02X%02X pc %04X sp %04X memory[sp] %04X\n"
           , state->a
           , state->b
           , state->c
@@ -985,13 +992,18 @@ int main(int argc, char *argv[]) {
           , state->h
           , state->l
           , state->pc
+          , state->sp
           , ((state->memory[state->sp+1]<<8) | (state->memory[state->sp]-2)));
-    printf("\tz %s s %s cy %s p %s ac %s\n"
-          , state->cc.z ? "yes" : " no"
-          , state->cc.s ? "yes" : " no"
-          , state->cc.cy ? "yes" : " no"
-          , state->cc.p ? "yes" : " no"
-          , state->cc.ac ? "yes" : " no");
+    printf("\t%s %s %s %s %s\n"
+          , state->cc.z ? "z" : "."
+          , state->cc.s ? "s" : "."
+          , state->cc.cy ? "cy" : "."
+          , state->cc.p ? "p" : "."
+          , state->cc.ac ? "ac" : ".");
+    if (instruction_num == 40024)
+      test=1;
+    if (test==1)
+      getchar();
   } while(done == 0);
   
   return 0;
