@@ -488,10 +488,10 @@ int Emulate(State *state) {
         state->sp = (opcode[2]<<8) | (opcode[1]);
         state->pc += 2;
       } break;
-      case 0x32: // STA addr
+      case 0x32: // STA addr in A
       {
         uint16_t offset = (opcode[2]<<8) | (opcode[1]);
-        state->a = state->memory[offset];
+        state->memory[offset] = state->a;
         state->pc += 2;
       } break;
       case 0x33: UnimplementedInstruction(state); break;
@@ -802,7 +802,6 @@ int Emulate(State *state) {
         state->cc.s = ((aux & 0x80) == 0x80);
         state->cc.cy = (aux > 0xff);
         state->cc.p = parity(aux&0xff);
-        printf("\n%04X\n", aux);
         state->a = aux & 0xff;
         state->pc++;
       } break;
@@ -978,7 +977,7 @@ int main(int argc, char *argv[]) {
   
   int done;
   int instruction_num = 0;
-  int test = 0;
+  /* int test = 0; */
   do {
     instruction_num++;
     printf("Instruction: %d\n", instruction_num);
@@ -994,16 +993,17 @@ int main(int argc, char *argv[]) {
           , state->pc
           , state->sp
           , ((state->memory[state->sp+1]<<8) | (state->memory[state->sp]-2)));
-    printf("\t%s %s %s %s %s\n"
+    printf("\t%s %s %s %s %s %s\n"
           , state->cc.z ? "z" : "."
           , state->cc.s ? "s" : "."
           , state->cc.cy ? "cy" : "."
           , state->cc.p ? "p" : "."
-          , state->cc.ac ? "ac" : ".");
-    if (instruction_num == 40024)
-      test=1;
-    if (test==1)
-      getchar();
+          , state->cc.ac ? "ac" : "."
+          , state->int_enable ? "i" : ".");
+    /* if (instruction_num == 42040) */
+    /*   test=1; */
+    /* if (test==1) */
+    /*   getchar(); */
   } while(done == 0);
   
   return 0;
