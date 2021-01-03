@@ -3,6 +3,13 @@
 An Intel 8080 Emulator for the game Space Invaders.
 In the future I'll build a full blown i8080 emulator.
 
+**DEBUGGING**
+----
+To debug run: 
+```sh
+cc -g -O0 8080.c -o 8080.out && ./8080.out path/to/game
+```
+
 **TODO**
 ----
 - Check instructions that were written on [emulator101](http://emulator101.com). `POP PSW` had an error while setting flags.
