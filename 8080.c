@@ -907,6 +907,7 @@ int Emulate(State *state) {
         state->cc.ac = (0x10 == (psw & 0x10));
         state->cc.z = (0x40 == (psw & 0x40));
         state->cc.s = (0x80 == (psw & 0x80));
+        state->sp += 2;
       } break;
       case 0xf2: UnimplementedInstruction(state); break;
       case 0xf3: UnimplementedInstruction(state); break;
