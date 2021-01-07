@@ -1,8 +1,12 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <SDL2/SDL.h>
 #include "8080.h"
 
 #define DEBUG getenv("DEBUG")
+
+const int SCREEN_WIDTH = 256;
+const int SCREEN_HEIGHT = 224;
 
 int main (int argc, char* argv[]) {
   State* state = InitState();
