@@ -27,12 +27,6 @@ typedef struct State {
   uint8_t int_enable;
 } State;
 
-int Disassemble(unsigned char *codebuffer, int pc);
-
-void UnimplementedInstruction(State *state);
-
-int parity(int x, int size);
-
 int Emulate(State *state);
 
 void ReadFile(State *state, char *filename);

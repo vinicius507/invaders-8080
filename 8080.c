@@ -1,8 +1,8 @@
+#include "8080.h"
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "8080.h"
 
 
 int Disassemble(unsigned char *codebuffer, int pc) {
@@ -286,11 +286,6 @@ int Disassemble(unsigned char *codebuffer, int pc) {
   return opbytes;
 }
 
-void UnimplementedInstruction(State *state) {
-  printf("Error: Unimplemented Instruction\n");
-  exit(1);
-}
-
 int parity(int x, int size) {
   int parity = 0;
   for (int i = 0; i < size; i++) {
@@ -298,6 +293,47 @@ int parity(int x, int size) {
     x = x >> 1;
   }
   return (parity % 2 == 0);
+}
+
+unsigned char cycles[] = {
+	4, 10, 7, 5, 5, 5, 7, 4, 4, 10, 7, 5, 5, 5, 7, 4, //0x00..0x0f
+	4, 10, 7, 5, 5, 5, 7, 4, 4, 10, 7, 5, 5, 5, 7, 4, //0x10..0x1f
+	4, 10, 16, 5, 5, 5, 7, 4, 4, 10, 16, 5, 5, 5, 7, 4, //etc
+	4, 10, 13, 5, 10, 10, 10, 4, 4, 10, 13, 5, 5, 5, 7, 4,
+	
+	5, 5, 5, 5, 5, 5, 7, 5, 5, 5, 5, 5, 5, 5, 7, 5, //0x40..0x4f
+	5, 5, 5, 5, 5, 5, 7, 5, 5, 5, 5, 5, 5, 5, 7, 5,
+	5, 5, 5, 5, 5, 5, 7, 5, 5, 5, 5, 5, 5, 5, 7, 5,
+	7, 7, 7, 7, 7, 7, 7, 7, 5, 5, 5, 5, 5, 5, 7, 5,
+	
+	4, 4, 4, 4, 4, 4, 7, 4, 4, 4, 4, 4, 4, 4, 7, 4, //0x80..8x4f
+	4, 4, 4, 4, 4, 4, 7, 4, 4, 4, 4, 4, 4, 4, 7, 4,
+	4, 4, 4, 4, 4, 4, 7, 4, 4, 4, 4, 4, 4, 4, 7, 4,
+	4, 4, 4, 4, 4, 4, 7, 4, 4, 4, 4, 4, 4, 4, 7, 4,
+	
+	11, 10, 10, 10, 17, 11, 7, 11, 11, 10, 10, 10, 10, 17, 7, 11, //0xc0..0xcf
+	11, 10, 10, 10, 17, 11, 7, 11, 11, 10, 10, 10, 10, 17, 7, 11, 
+	11, 10, 10, 18, 17, 11, 7, 11, 11, 5, 10, 5, 17, 17, 7, 11, 
+	11, 10, 10, 4, 17, 11, 7, 11, 11, 5, 10, 4, 17, 17, 7, 11, 
+};
+
+void LogicFlags(State *state) {
+  state->cc.cy = state->cc.ac = 0;
+  state->cc.z = (state->a == 0);
+  state->cc.s = ((state->a & 0x80) != 0);
+  state->cc.p = parity(state->a,8);
+}
+
+void ArithFlags(State *state, uint16_t res) {
+  state->cc.cy = (res > 0xff);
+  state->cc.z = ((res&0xff) == 0);
+  state->cc.s = ((res&0x80) == 0x80);
+  state->cc.p = parity(res&0xff, 8);
+}
+
+void UnimplementedInstruction(State *state) {
+  printf("Error: Unimplemented Instruction\n");
+  exit(1);
 }
 
 int Emulate(State *state) {
@@ -604,78 +640,54 @@ int Emulate(State *state) {
       state->a = state->memory[offset];
     } break;
     case 0x7f: UnimplementedInstruction(state); break;
-    case 0x80:  // ADD B | A <- A+B | A is a special register sometimes called accumulator.
+    case 0x80:  // ADD B | A <- A+B 
     {
-        uint16_t ans = (uint16_t)state->a + (uint16_t)state->b;
-        state->cc.z = ((ans & 0xff) == 0);  // Zero Flag
-        state->cc.s = ((ans & 0x80) != 0);  // Bit 7 Flag
-        state->cc.cy = (ans > 0xff);        // Carry Flag
-        state->cc.p = parity(ans & 0xff,8);
-        state->a = ans & 0xff;
+        uint16_t res = (uint16_t)state->a + (uint16_t)state->b;
+        ArithFlags(state, res);
+        state->a = res & 0xff;
     } break;
     case 0x81:  // ADD C | A <- A+C
     {
-      uint16_t ans = (uint16_t)state->a + (uint16_t)state->c;
-      state->cc.z = ((ans & 0xff) == 0);
-      state->cc.s = ((ans & 0x80) != 0);
-      state->cc.cy = (ans > 0xff);
-      state->cc.p = parity(ans & 0xff,8);
-      state->a = ans & 0xff;
+      uint16_t res = (uint16_t)state->a + (uint16_t)state->c;
+      ArithFlags(state, res);
+      state->a = res & 0xff;
     } break;
     case 0x82:  // ADD D | A <- A+D
     {
-      uint16_t ans = (uint16_t)state->a + (uint16_t)state->d;
-      state->cc.z = ((ans & 0xff) == 0);
-      state->cc.s = ((ans & 0x80) != 0);
-      state->cc.cy = (ans > 0xff);
-      state->cc.p = parity(ans & 0xff,8);
-      state->a = ans & 0xff;
+      uint16_t res = (uint16_t)state->a + (uint16_t)state->d;
+      ArithFlags(state, res);
+      state->a = res & 0xff;
     } break;
     case 0x83:  // ADD D | A <- A+E
     {
-      uint16_t ans = (uint16_t)state->a + (uint16_t)state->e;
-      state->cc.z = ((ans & 0xff) == 0);
-      state->cc.s = ((ans & 0x80) != 0);
-      state->cc.cy = (ans > 0xff);
-      state->cc.p = parity(ans & 0xff,8);
-      state->a = ans & 0xff;
+      uint16_t res = (uint16_t)state->a + (uint16_t)state->e;
+      ArithFlags(state, res);
+      state->a = res & 0xff;
     } break;
     case 0x84:  // ADD D | A <- A+H
     {
-      uint16_t ans = (uint16_t)state->a + (uint16_t)state->h;
-      state->cc.z = ((ans & 0xff) == 0);
-      state->cc.s = ((ans & 0x80) != 0);
-      state->cc.cy = (ans > 0xff);
-      state->cc.p = parity(ans & 0xff,8);
-      state->a = ans & 0xff;
+      uint16_t res = (uint16_t)state->a + (uint16_t)state->h;
+      ArithFlags(state, res);
+      state->a = res & 0xff;
     } break;
     case 0x85:  // ADD D | A <- A+L
     {
-      uint16_t ans = (uint16_t)state->a + (uint16_t)state->l;
-      state->cc.z = ((ans & 0xff) == 0);
-      state->cc.s = ((ans & 0x80) != 0);
-      state->cc.cy = (ans > 0xff);
-      state->cc.p = parity(ans & 0xff,8);
-      state->a = ans & 0xff;
+      uint16_t res = (uint16_t)state->a + (uint16_t)state->l;
+      ArithFlags(state, res);
+      state->a = res & 0xff;
     } break;
     case 0x86:  // ADD M | A <- A+(HL)
     {
       uint16_t offset = (state->h<<8) | (state->l);
-      uint16_t ans = (uint16_t)state->a + (uint16_t)state->memory[offset];
-      state->cc.z = ((ans & 0xff) == 0);
-      state->cc.s = ((ans & 0x80) != 0);
-      state->cc.cy = (ans > 0xff);
-      state->cc.p = parity(ans & 0xff,8);
-      state->a = ans & 0xff;
+      uint16_t res = (uint16_t)state->a + (uint16_t)state->memory[offset];
+      ArithFlags(state, res);
+      state->a = res & 0xff;
     } break;
     case 0x87:  // ADD A | A <- A+A
     {
-      uint16_t ans = (uint16_t)state->a + (uint16_t)state->a;
-      state->cc.z = ((ans & 0xff) == 0);
-      state->cc.s = ((ans & 0x80) != 0);
-      state->cc.cy = (ans > 0xff);
-      state->cc.p = parity(ans & 0xff,8);
-      state->a = ans & 0xff;
+      uint16_t res = (uint16_t)state->a + (uint16_t)state->a;
+      ArithFlags(state, res);
+      state->a = res & 0xff;
     } break;
     case 0x88: UnimplementedInstruction(state); break;
     case 0x89: UnimplementedInstruction(state); break;
@@ -711,11 +723,7 @@ int Emulate(State *state) {
     case 0xa7: // ANA A
     {
       state->a = (state->a & state->a);
-      state->cc.z = (state->a == 0);
-      state->cc.s = ((state->a & 0x80) != 0);
-      state->cc.p = parity(state->a,8);
-      state->cc.cy = 0;
-      state->cc.ac = 0;
+      LogicFlags(state);
     } break;
     case 0xa8: UnimplementedInstruction(state); break;
     case 0xa9: UnimplementedInstruction(state); break;
@@ -727,11 +735,7 @@ int Emulate(State *state) {
     case 0xaf: // XRA A
     {
       state->a = (state->a ^ state->a);
-      state->cc.z = (state->a == 0);
-      state->cc.s = ((state->a & 0x80) != 0);
-      state->cc.p = parity(state->a,8);
-      state->cc.cy = 0;
-      state->cc.ac = 0;
+      LogicFlags(state);
     } break;
     case 0xb0: UnimplementedInstruction(state); break;
     case 0xb1: UnimplementedInstruction(state); break;
@@ -851,12 +855,8 @@ int Emulate(State *state) {
     } break;
     case 0xe6:  // ANI byte
     {
-      uint8_t ans = state->a & opcode[1];
-      state->cc.z = (ans == 0);
-      state->cc.s = (0x80 == (ans & 0x80));
-      state->cc.p = parity(ans,8);
-      state->cc.cy = 0;
-      state->a = ans;
+      state->a = state->a & opcode[1];
+      LogicFlags(state);
       state->pc++;
     } break;
     case 0xe7: UnimplementedInstruction(state); break;
@@ -924,7 +924,7 @@ int Emulate(State *state) {
     case 0xff: UnimplementedInstruction(state); break;
   }
   
-  return 0;
+  return cycles[*opcode];
 }
 
 void ReadFile(State *state, char *filename) {
