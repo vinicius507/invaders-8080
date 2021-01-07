@@ -2,30 +2,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "8080.h"
 
-typedef struct ConditionCodes {
-  uint8_t z : 1;
-  uint8_t s : 1;
-  uint8_t p : 1;
-  uint8_t cy : 1;
-  uint8_t ac : 1;
-  uint8_t pad : 3;
-} ConditionCodes;
-
-typedef struct State {
-  uint8_t a;
-  uint8_t b;
-  uint8_t c;
-  uint8_t d;
-  uint8_t e;
-  uint8_t h;
-  uint8_t l;
-  uint16_t sp;
-  uint16_t pc;
-  uint8_t *memory;
-  ConditionCodes cc;
-  uint8_t int_enable;
-} State;
 
 int Disassemble(unsigned char *codebuffer, int pc) {
   unsigned char *code = &codebuffer[pc];
@@ -949,57 +927,35 @@ int Emulate(State *state) {
   return 0;
 }
 
-void ReadFile(State* state, char* filename) {
-   FILE *f = fopen(filename, "rb");
-   if (f==NULL) {
-      printf("Error: couldn't open %s\n", filename);
-      exit(1);
-   }
-   
-   fseek(f, 0L, SEEK_END);
-   int fsize = ftell(f);
-   fseek(f, 0L, SEEK_SET);
-   
-   uint8_t *buffer = &state->memory[0];
-   fread(buffer, fsize, 1, f);
-   fclose(f);
-}
-State* InitState() {
-  State* state = calloc(1,sizeof(State));
-  state->memory = malloc(0x10000); // 16K
-  return state; 
+void ReadFile(State *state, char *filename) {
+  FILE *f = fopen(filename, "rb");
+  if (f == NULL) {
+    printf("Error: couldn't open %s\n", filename);
+    exit(1);
+  }
+
+  fseek(f, 0L, SEEK_END);
+  int fsize = ftell(f);
+  fseek(f, 0L, SEEK_SET);
+
+  uint8_t *buffer = &state->memory[0];
+  fread(buffer, fsize, 1, f);
+  fclose(f);
 }
 
-int main(int argc, char *argv[]) {
-  
-  State* state = InitState();
-  ReadFile(state, argv[1]);
-  
-  int done;
-  int instruction_num = 0;
-  do {
-    instruction_num++;
-    printf("Instruction: %d\n", instruction_num);
-    done = Emulate(state);
-    printf("\ta %02X bc %02X%02X de %02X%02X hl %02X%02X pc %04X sp %04X memory[sp] %04X\n"
-          , state->a
-          , state->b
-          , state->c
-          , state->d
-          , state->e
-          , state->h
-          , state->l
-          , state->pc
-          , state->sp
-          , ((state->memory[state->sp+1]<<8) | (state->memory[state->sp]-2)));
-    printf("\t%s %s %s %s %s %s\n"
-          , state->cc.z ? "z" : "."
-          , state->cc.s ? "s" : "."
-          , state->cc.cy ? "cy" : "."
-          , state->cc.p ? "p" : "."
-          , state->cc.ac ? "ac" : "."
-          , state->int_enable ? "i" : ".");
-  } while(done == 0);
-  
-  return 0;
+State *InitState() {
+  State* state = calloc(1,sizeof(State));
+  state->memory = malloc(0x10000); // 16K
+  return state;
+}
+
+void Push (State *state, int hi, int lo) {
+  state->memory[state->sp-1] = hi;
+  state->memory[state->sp-2] = lo;
+  state->sp -= 2;
+}
+
+void GenerateInterrupt(State *state, int interrupt_num) {
+  Push(state, (state->pc & 0xff00) >>8, (state->pc & 0xff));
+  state->pc = 8 * interrupt_num;
 }
