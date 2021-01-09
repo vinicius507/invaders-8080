@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#define DEBUG getenv("DEBUG")
 
 int Disassemble(unsigned char *codebuffer, int pc) {
   unsigned char *code = &codebuffer[pc];
@@ -362,7 +363,8 @@ void Pop(State *state, uint8_t *hi, uint8_t *lo) {
 
 int Emulate(State *state) {
   unsigned char *opcode = &state->memory[state->pc];
-  Disassemble(state->memory, state->pc); 
+  if (DEBUG)
+    Disassemble(state->memory, state->pc); 
   state->pc+=1;
   switch (*opcode) {
     case 0x00: break; // NOP
