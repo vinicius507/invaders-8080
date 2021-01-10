@@ -133,6 +133,9 @@ void KillMachine(Machine* machine) {
 
 void MachineIN (Machine* machine, uint8_t port) {
   switch(port) {
+    case 0:
+      machine->state->a = 0x0f;
+      break;
     case 1: 
       machine->state->a = machine->port1;
       break;
@@ -177,23 +180,18 @@ void doCPU(Machine* machine) {
   int instruction_num = 0;
   while (cycles > 0) {
     uint8_t* opcode = &machine->state->memory[machine->state->pc];
-    switch (*opcode) {
-      case 0xdb: // IN port 
-      {
-        uint8_t port = opcode[1];
-        MachineIN(machine, port);
-        cycles -= 3;
-      } break;
-      case 0xd3: // OUT port
-      {
-        uint8_t port = opcode[1];
-        MachineOUT(machine, port);
-        machine->state->pc++;
-        cycles -= 3;
-      } break;
-      default:
-        cycles -= Emulate(machine->state);
-        break;
+
+    if (*opcode == 0xdb) {
+      uint8_t port = opcode[1];
+      MachineIN(machine, port);
+      cycles -= 3;
+    } else if (*opcode == 0xd3) {
+      uint8_t port = opcode[1];
+      MachineOUT(machine, port);
+      machine->state->pc++;
+      cycles -= 3;
+    } else {
+      cycles -= Emulate(machine->state);
     }
 
     if (DEBUG) {
