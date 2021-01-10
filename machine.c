@@ -149,7 +149,7 @@ void MachineIN (Machine* machine, uint8_t port) {
 void MachineOUT (Machine* machine, uint8_t port) {
   switch(port) {
     case 2:
-      machine->shiftOffset = machine->state->a;
+      machine->shiftOffset = machine->state->a&0x7;
       break;
     case 3: break;
     case 4:
@@ -169,16 +169,17 @@ void doCPU(Machine* machine) {
   int instruction_num = 0;
   while (cycles > 0) {
     uint8_t* opcode = &machine->state->memory[machine->state->pc];
-
     switch (*opcode) {
       case 0xdb: 
         {
+          SDL_Log("IN %02X", opcode[1]);
           uint8_t port = opcode[1];
           MachineIN(machine, port);
           cycles -= 3;
         } break;
       case 0xd3:
       {
+        SDL_Log("OUT %02X", opcode[1]);
         uint8_t port = opcode[1];
         MachineOUT(machine, port);
         machine->state->pc++;
@@ -271,7 +272,7 @@ int main (int argc, char* argv[]) {
     }
 
     uint8_t time = SDL_GetTicks() - start;
-    if (time < 0) continue;
+    if (time < 0) exit(1);
     uint8_t sleepTime = TIME_PER_FRAME - time;
 
     if (sleepTime > 0) {

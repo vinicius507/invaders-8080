@@ -369,7 +369,7 @@ void WriteHL(State *state, uint8_t value) {
   state->memory[offset] = value;
 }
 
-    void Push(State *state, uint8_t hi, uint8_t lo) {
+void Push(State *state, uint8_t hi, uint8_t lo) {
   WriteMem(state, state->sp-1, hi);
   WriteMem(state, state->sp-2, lo);
   state->sp -= 2;
