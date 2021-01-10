@@ -171,15 +171,13 @@ void doCPU(Machine* machine) {
     uint8_t* opcode = &machine->state->memory[machine->state->pc];
     switch (*opcode) {
       case 0xdb: 
-        {
-          SDL_Log("IN %02X", opcode[1]);
-          uint8_t port = opcode[1];
-          MachineIN(machine, port);
-          cycles -= 3;
-        } break;
+      {
+        uint8_t port = opcode[1];
+        MachineIN(machine, port);
+        cycles -= 3;
+      } break;
       case 0xd3:
       {
-        SDL_Log("OUT %02X", opcode[1]);
         uint8_t port = opcode[1];
         MachineOUT(machine, port);
         machine->state->pc++;
@@ -213,7 +211,6 @@ int main (int argc, char* argv[]) {
       if (e.type == SDL_QUIT) {
         quit = 1;
       } else if (e.type == SDL_KEYDOWN) {
-        SDL_Log("Key down %d", e.key.keysym.sym);
         switch (e.key.keysym.sym) {
           case SDLK_c:
             machine->port1 |= 1 << 0;  // coin
@@ -241,7 +238,6 @@ int main (int argc, char* argv[]) {
             break;
         }
       } else if (e.type == SDL_KEYUP) {
-        SDL_Log("Key up %d", e.key.keysym.sym);
         switch (e.key.keysym.sym) {
           case SDLK_c:
             machine->port1 &= 0b11111110;  // coin
