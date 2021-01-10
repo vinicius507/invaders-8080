@@ -55,7 +55,7 @@ void Update(Machine* machine) {
 Machine* InitMachine(char* filename) {
   Machine* machine = calloc(1, sizeof(Machine));
   machine->state = InitState();
-  machine->nextInterrupt = 1;
+  machine->nextInterrupt = 0x08;
   machine->port1 = 1<<3;
   machine->port2 = 0;
   machine->shift0 = 0;
@@ -91,6 +91,7 @@ Machine* InitMachine(char* filename) {
   SDL_SetWindowMinimumSize(machine->display.window, WIDTH, HEIGHT);
   SDL_ShowCursor(SDL_DISABLE);
   SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "nearest");
+  SDL_SetHint(SDL_HINT_RENDER_DRIVER, "metal");
 
   machine->display.renderer = SDL_CreateRenderer(
       machine->display.window, -1,
@@ -132,9 +133,6 @@ void KillMachine(Machine* machine) {
 
 void MachineIN (Machine* machine, uint8_t port) {
   switch(port) {
-    case 0:
-      machine->state->a = 1;
-      break;
     case 1: 
       machine->state->a = machine->port1;
       break;
@@ -143,7 +141,7 @@ void MachineIN (Machine* machine, uint8_t port) {
       break;
     case 3:
     {
-      uint16_t v = (machine->shift1 << 8) | machine->shift0;
+      uint16_t v = (machine->shift1<<8) | machine->shift0;
       machine->state->a = (v>>(8-machine->shiftOffset)) & 0xff;
     } break;
     default:
@@ -286,7 +284,7 @@ int main (int argc, char* argv[]) {
       Update(machine);
       if (machine->state->int_enable) {
         GenerateInterrupt(machine->state, machine->nextInterrupt);
-        machine->nextInterrupt = machine->nextInterrupt == 1 ? 2 : 1;
+        machine->nextInterrupt = machine->nextInterrupt == 0x08 ? 0x10 : 0x08;
       }
     }
 

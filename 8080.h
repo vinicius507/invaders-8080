@@ -38,6 +38,6 @@ void ReadFile(State *state, char *filename);
 
 State *InitState();
 
-void GenerateInterrupt(State *state, int interrupt_num);
+void GenerateInterrupt(State *state, int nextInterrupt);
 
 #endif

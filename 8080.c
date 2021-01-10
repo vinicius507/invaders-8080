@@ -533,7 +533,15 @@ int Emulate(State *state) {
       state->h = opcode[1];
       state->pc++;
       break;
-    case 0x27: UnimplementedInstruction(state); break;
+    case 0x27: // DAA
+      if ((state->a & 0xf) > 9)
+        state->a += 6;
+      if ((state->a & 0xf0) > 0x90) {
+        uint16_t aux = (uint16_t)state->a + 0x60;
+        state->a = aux & 0xff;
+        ArithFlags(state, aux);
+      }
+      break;
     case 0x28: UnimplementedInstruction(state); break;
     case 0x29: // DAD H
     {
@@ -861,7 +869,7 @@ int Emulate(State *state) {
       Pop(state, &state->b, &state->c);
       break;
     case 0xc2:  // JNZ addr | JMP if no zero flag
-      if (0 == state->cc.z){  
+      if (state->cc.z == 0){  
         state->pc = (opcode[2]<<8) | opcode[1];
       } else
         state->pc += 2;
@@ -890,7 +898,7 @@ int Emulate(State *state) {
     } break;
     case 0xc7: UnimplementedInstruction(state); break;
     case 0xc8: // RZ 
-      if (state->cc.z) {
+      if (state->cc.z != 0) {
         state->pc = state->memory[state->sp+1]<<8 | state->memory[state->sp];
         state->sp += 2;
       }
@@ -900,19 +908,28 @@ int Emulate(State *state) {
       state->sp += 2;
       break;
     case 0xca: // JZ addr
-      if (state->cc.z)
+      if (state->cc.z != 0)
         state->pc = (opcode[2]<<8) | opcode[1];
       else
         state->pc += 2; 
       break;
     case 0xcb: UnimplementedInstruction(state); break;
-    case 0xcc: UnimplementedInstruction(state); break;
+    case 0xcc: // CZ addr
+      if (state->cc.z != 0) {
+        uint16_t ret = state->pc + 2;
+        WriteMem(state, state->sp - 1, (ret >> 8) & 0xff);
+        WriteMem(state, state->sp - 2, (ret & 0xff));
+        state->sp -= 2;
+        state->sp = (opcode[2] << 8) | opcode[1];
+      } else
+        state->pc += 2;
+      break;
     case 0xcd:  // CALL addr
     {
       uint16_t ret = state->pc + 2;
       WriteMem(state, state->sp - 1, (ret>>8) & 0xff);
       WriteMem(state, state->sp - 2, ret & 0xff);
-      state->sp = state->sp - 2;
+      state->sp -= 2;
       state->pc = (opcode[2]<<8) | opcode[1];
     } break;
     case 0xce: UnimplementedInstruction(state); break;
@@ -933,7 +950,6 @@ int Emulate(State *state) {
         state->pc += 2;
       break;
     case 0xd3: // OUT, word
-      state->pc++;
       break;
     case 0xd4: UnimplementedInstruction(state); break;
     case 0xd5: // PUSH D
@@ -960,7 +976,6 @@ int Emulate(State *state) {
         state->pc += 2;
       break;
     case 0xdb: // IN, word
-      state->pc++;
       break;
     case 0xdc: UnimplementedInstruction(state); break;
     case 0xdd: UnimplementedInstruction(state); break;
@@ -1079,8 +1094,8 @@ State *InitState() {
   return state;
 }
 
-void GenerateInterrupt(State *state, int interrupt_num) {
+void GenerateInterrupt(State *state, int nextInterrupt) {
   Push(state, (state->pc & 0xff00) >> 8, (state->pc & 0xff));
-  state->pc = 8 * interrupt_num;
+  state->pc = (uint16_t)nextInterrupt;
   state->int_enable = 0;
 }
