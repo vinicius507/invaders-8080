@@ -23,6 +23,7 @@ DEBUG=1 ./machine.out path/to/invaders
 
 **TODO**
 ----
+- [BUG] Verify all instructions.
 - Finish Space Invaders Emulation(display, audio, input, etc.).
   - Managed to finish display. Now going to input, audio, etc. 
   - Gotta change IN/OUT instructions.

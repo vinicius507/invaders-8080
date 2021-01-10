@@ -219,10 +219,10 @@ int main (int argc, char* argv[]) {
       } else if (e.type == SDL_KEYDOWN) {
         switch (e.key.keysym.sym) {
           case SDLK_c:
-            machine->port1 = machine->port1 | 1;  // coin
+            machine->port1 = machine->port1 | 0x01;  // coin
             break;
           case SDLK_2:
-            machine->port1 = machine->port1 | 1<<1;  // P2 start butotn
+            machine->port1 = machine->port1 | 1<<1;  // P2 start button
             break;
           case SDLK_RETURN:
             machine->port1 = machine->port1 | 1<<2;  // P1 start button
