@@ -7,49 +7,62 @@ void Update(Machine* machine) {
     const int y = i * 8 / 256;
     const int baseX = (i * 8) % 256;
     const uint8_t byte = machine->state->memory[VRAM_ADDR + i];
-    
+
     for (uint8_t bit = 0; bit < 8; bit++) {
       int px = baseX + bit;
       int py = y;
-      const uint8_t isSet = (byte >> bit) & 1; 
+      const uint8_t isSet = (byte >> bit) & 1;
       uint8_t r = 0, g = 0, b = 0;
 
       if (isSet) {
         if (px < 16) {
-          if (py < 16 || py > 118 + 16)
-            r = g = b = 255;
-          else
+          if (py < 16 || py > 118 + 16) {
+            r = 255;
             g = 255;
+            b = 255;
+          } else {
+            g = 255;
+          }
         } else if (px >= 16 && px <= 16 + 56) {
           g = 255;
         } else if (px >= 16 + 56 + 120 && px < 16 + 56 + 120 + 32) {
           r = 255;
         } else {
-          r = g = b = 255;
+          r = 255;
+          g = 255;
+          b = 255;
         }
       }
 
       const uint8_t temp = px;
       px = py;
-      py =  (HEIGHT - 1) - temp;
-        
+      py = (HEIGHT - 1) - temp;
+
       machine->display.buffer[py][px][0] = r;
       machine->display.buffer[py][px][1] = g;
       machine->display.buffer[py][px][2] = b;
     }
   }
-  
+
   const uint32_t pitch = sizeof(uint8_t) * 4 * WIDTH;
-  if (SDL_UpdateTexture(
+  SDL_UpdateTexture(
       machine->display.texture,
       NULL,
       &machine->display.buffer,
-      pitch) != 0) SDL_Log("SDLError: %s", SDL_GetError());
+      pitch) != 0;
 }
 
 Machine* InitMachine(char* filename) {
   Machine* machine = calloc(1, sizeof(Machine));
   machine->state = InitState();
+  machine->nextInterrupt = 1;
+  machine->port1 = 1<<3;
+  machine->port2 = 0;
+  machine->shift0 = 0;
+  machine->shift1 = 0;
+  machine->shiftOffset = 0;
+  machine->lastOutPort3 = 0;
+  machine->lastOutPort5 = 0;
   ReadFile(machine->state, filename);
 
   machine->display.window = NULL;
@@ -68,7 +81,7 @@ Machine* InitMachine(char* filename) {
       SDL_WINDOWPOS_UNDEFINED,
       WIDTH * 2,
       HEIGHT * 2,
-      SDL_WINDOW_SHOWN);
+      SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE);
 
   if (machine->display.window == NULL) {
     SDL_Log("SDLError: %s\n", SDL_GetError());
@@ -117,11 +130,65 @@ void KillMachine(Machine* machine) {
   SDL_Quit();
 }
 
+void MachineIN (Machine* machine, uint8_t port) {
+  switch(port) {
+    case 0: machine->state->a = 1; break;
+    case 1: machine->state->a = machine->port1; break;
+    case 2: machine->state->a = machine->port2; break;
+    case 3:
+    {
+      uint16_t v = (machine->shift1 << 8) | machine->shift0;
+      machine->state->a = (v>>(8-machine->shiftOffset)) & 0xff;
+    } break;
+    default: printf("Error: Unknown IN port %02X\n", port); getchar();
+  }
+
+  machine->state->pc++;
+}
+
+void MachineOUT (Machine* machine, uint8_t port) {
+  switch(port) {
+    case 2:
+      machine->shiftOffset = machine->state->a;
+      break;
+    case 3: break;
+    case 4:
+      machine->shift0 = machine->shift1;
+      machine->shift1 = machine->state->a;
+      break;
+    case 5: break;
+    case 6: break;
+    default: printf("Error: Unknown OUT port %02X\n", port); getchar();
+  }
+
+  machine->state->pc++;
+}
+
 void doCPU(Machine* machine) {
   int cycles = CYCLES_PER_UPDATE;
   int instruction_num = 0;
   while (cycles > 0) {
-    cycles -= Emulate(machine->state);
+    uint8_t* opcode = &machine->state->memory[machine->state->pc];
+
+    switch (*opcode) {
+      case 0xdb: 
+        {
+          uint8_t port = opcode[1];
+          MachineIN(machine, port);
+          cycles -= 3;
+        } break;
+      case 0xd3:
+      {
+        uint8_t port = opcode[1];
+        MachineOUT(machine, port);
+        machine->state->pc++;
+        cycles -= 3;
+      } break;
+      default:
+        cycles -= Emulate(machine->state);
+        break;
+    }
+
     if (DEBUG) {
       instruction_num++;
       printf("Instruction: %d\n", instruction_num);
@@ -142,19 +209,80 @@ int main (int argc, char* argv[]) {
     doCPU(machine);
 
     while (SDL_PollEvent(&e) != 0) {
-      if (e.type == SDL_QUIT)
+      if (e.type == SDL_QUIT) {
         quit = 1;
+      } else if (e.type == SDL_KEYDOWN) {
+        SDL_Log("Key down %d", e.key.keysym.sym);
+        switch (e.key.keysym.sym) {
+          case SDLK_c:
+            machine->port1 |= 1 << 0;  // coin
+            break;
+          case SDLK_2:
+            machine->port1 |= 1 << 1;  // P2 start butotn
+            break;
+          case SDLK_RETURN:
+            machine->port1 |= 1 << 2;  // P1 start button
+            break;
+          case SDLK_SPACE:
+            machine->port1 |= 1 << 4;  // P1,2 shoot
+            machine->port2 |= 1 << 4;
+            break;
+          case SDLK_LEFT:
+            machine->port1 |= 1 << 5;  // P1,2 joystick left
+            machine->port2 |= 1 << 5;
+            break;
+          case SDLK_RIGHT:
+            machine->port1 |= 1 << 6;  // P1,2 joystick right
+            machine->port2 |= 1 << 6;
+            break;
+          case SDLK_t:
+            machine->port2 |= 1 << 2;  //tilt (?)
+            break;
+        }
+      } else if (e.type == SDL_KEYUP) {
+        SDL_Log("Key up %d", e.key.keysym.sym);
+        switch (e.key.keysym.sym) {
+          case SDLK_c:
+            machine->port1 &= 0b11111110;  // coin
+            break;
+          case SDLK_2:
+            machine->port1 &= 0b11111101;  // P2 start butotn
+            break;
+          case SDLK_RETURN:
+            machine->port1 &= 0b11111011;  // P1 start button
+            break;
+          case SDLK_SPACE:
+            machine->port1 &= 0b11101111;  // P1,2 shoot
+            machine->port2 &= 0b11101111;
+            break;
+          case SDLK_LEFT:
+            machine->port1 &= 0b11011111;  // P1,2 joystick left
+            machine->port2 &= 0b11011111;
+            break;
+          case SDLK_RIGHT:
+            machine->port1 &= 0b10111111;  // P1,2 joystick right
+            machine->port2 &= 0b10111111;
+            break;
+          case SDLK_t:
+            machine->port2 &= 0b11111011;  //tilt (?)
+            break;
+        }
+      }
     }
 
     uint8_t time = SDL_GetTicks() - start;
     if (time < 0) continue;
     uint8_t sleepTime = TIME_PER_FRAME - time;
-    
+
     if (sleepTime > 0) {
       SDL_Delay(sleepTime);
+      Update(machine);
+      if (machine->state->int_enable) {
+        GenerateInterrupt(machine->state, machine->nextInterrupt);
+        machine->nextInterrupt = machine->nextInterrupt == 1 ? 2 : 1;
+      }
     }
-    
-    Update(machine);
+
     SDL_RenderClear(machine->display.renderer);
     SDL_RenderCopy(
         machine->display.renderer,

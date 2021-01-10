@@ -22,6 +22,10 @@ typedef struct Display {
 typedef struct Machine {
   State* state;
   Display display;
+  uint8_t port1, port2;
+  uint8_t shift0, shift1, shiftOffset;
+  uint8_t lastOutPort3, lastOutPort5;
+  uint8_t nextInterrupt;
 } Machine;
 
 #endif
