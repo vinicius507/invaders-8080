@@ -132,15 +132,23 @@ void KillMachine(Machine* machine) {
 
 void MachineIN (Machine* machine, uint8_t port) {
   switch(port) {
-    case 0: machine->state->a = 1; break;
-    case 1: machine->state->a = machine->port1; break;
-    case 2: machine->state->a = machine->port2; break;
+    case 0:
+      machine->state->a = 1;
+      break;
+    case 1: 
+      machine->state->a = machine->port1;
+      break;
+    case 2:
+      machine->state->a = machine->port2;
+      break;
     case 3:
     {
       uint16_t v = (machine->shift1 << 8) | machine->shift0;
       machine->state->a = (v>>(8-machine->shiftOffset)) & 0xff;
     } break;
-    default: printf("Error: Unknown IN port %02X\n", port); getchar();
+    default:
+      printf("Error: Unknown IN port %02X\n", port);
+      break;
   }
 
   machine->state->pc++;
@@ -158,7 +166,9 @@ void MachineOUT (Machine* machine, uint8_t port) {
       break;
     case 5: break;
     case 6: break;
-    default: printf("Error: Unknown OUT port %02X\n", port); getchar();
+    default:
+      printf("Error: Unknown OUT port %02X\n", port);
+      break;
   }
 
   machine->state->pc++;
@@ -170,13 +180,13 @@ void doCPU(Machine* machine) {
   while (cycles > 0) {
     uint8_t* opcode = &machine->state->memory[machine->state->pc];
     switch (*opcode) {
-      case 0xdb: 
+      case 0xdb: // IN port 
       {
         uint8_t port = opcode[1];
         MachineIN(machine, port);
         cycles -= 3;
       } break;
-      case 0xd3:
+      case 0xd3: // OUT port
       {
         uint8_t port = opcode[1];
         MachineOUT(machine, port);
@@ -213,25 +223,25 @@ int main (int argc, char* argv[]) {
       } else if (e.type == SDL_KEYDOWN) {
         switch (e.key.keysym.sym) {
           case SDLK_c:
-            machine->port1 |= 1 << 0;  // coin
+            machine->port1 = machine->port1 | 1;  // coin
             break;
           case SDLK_2:
-            machine->port1 |= 1 << 1;  // P2 start butotn
+            machine->port1 = machine->port1 | 1<<1;  // P2 start butotn
             break;
           case SDLK_RETURN:
-            machine->port1 |= 1 << 2;  // P1 start button
+            machine->port1 = machine->port1 | 1<<2;  // P1 start button
             break;
           case SDLK_SPACE:
-            machine->port1 |= 1 << 4;  // P1,2 shoot
-            machine->port2 |= 1 << 4;
+            machine->port1 = machine->port1 | 1<<4;  // P1,2 shoot
+            machine->port2 = machine->port2 | 1<<4;
             break;
           case SDLK_LEFT:
-            machine->port1 |= 1 << 5;  // P1,2 joystick left
-            machine->port2 |= 1 << 5;
+            machine->port1 = machine->port1 | 1<<5;  // P1,2 joystick left
+            machine->port2 = machine->port2 | 1<<5;
             break;
           case SDLK_RIGHT:
-            machine->port1 |= 1 << 6;  // P1,2 joystick right
-            machine->port2 |= 1 << 6;
+            machine->port1 = machine->port1 | 1<<6;  // P1,2 joystick right
+            machine->port2 = machine->port2 | 1<<6;
             break;
           case SDLK_t:
             machine->port2 |= 1 << 2;  //tilt (?)
@@ -240,28 +250,28 @@ int main (int argc, char* argv[]) {
       } else if (e.type == SDL_KEYUP) {
         switch (e.key.keysym.sym) {
           case SDLK_c:
-            machine->port1 &= 0b11111110;  // coin
+            machine->port1 = machine->port1 & 0xfe;  // coin
             break;
           case SDLK_2:
-            machine->port1 &= 0b11111101;  // P2 start butotn
+            machine->port1 = machine->port1 & 0xfd;  // P2 start butotn
             break;
           case SDLK_RETURN:
-            machine->port1 &= 0b11111011;  // P1 start button
+            machine->port1 = machine->port1 & 0xfb;  // P1 start button
             break;
           case SDLK_SPACE:
-            machine->port1 &= 0b11101111;  // P1,2 shoot
-            machine->port2 &= 0b11101111;
+            machine->port1 = machine->port1 & 0xef;  // P1,2 shoot
+            machine->port2 = machine->port2 & 0xef;
             break;
           case SDLK_LEFT:
-            machine->port1 &= 0b11011111;  // P1,2 joystick left
-            machine->port2 &= 0b11011111;
+            machine->port1 = machine->port1 & 0xdf;  // P1,2 joystick left
+            machine->port2 = machine->port2 & 0xdf;
             break;
           case SDLK_RIGHT:
-            machine->port1 &= 0b10111111;  // P1,2 joystick right
-            machine->port2 &= 0b10111111;
+            machine->port1 = machine->port1 & 0xbf;  // P1,2 joystick right
+            machine->port2 = machine->port2 & 0xbf;
             break;
           case SDLK_t:
-            machine->port2 &= 0b11111011;  //tilt (?)
+            machine->port2 = machine->port2 & 0xfb;  //tilt (?)
             break;
         }
       }

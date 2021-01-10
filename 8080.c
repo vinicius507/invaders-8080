@@ -468,7 +468,10 @@ int Emulate(State *state) {
       state->d = (aux>>8 & 0xff);
       state->e = (aux & 0xff);
     } break;
-    case 0x14: UnimplementedInstruction(state); break;
+    case 0x14: // INR D
+      state->d += 1;
+      ZSPFlags(state, state->d);
+      break;
     case 0x15: UnimplementedInstruction(state); break;
     case 0x16: // MVI D,byte
       state->d = opcode[1];
@@ -523,10 +526,7 @@ int Emulate(State *state) {
     {
       state->h++;
       uint8_t aux = state->h;
-      state->cc.z = ((aux & 0xff) == 0);
-      state->cc.s = (0x80 == (aux & 0x80));
-      state->cc.p = parity(aux & 0xff,8);
-      state->cc.ac = (aux > 0x09);
+      ZSPFlags(state, aux);
     } break;
     case 0x25: UnimplementedInstruction(state); break;
     case 0x26: // MVI H,byte
@@ -572,7 +572,12 @@ int Emulate(State *state) {
       state->pc += 2;
     } break;
     case 0x33: UnimplementedInstruction(state); break;
-    case 0x34: UnimplementedInstruction(state); break;
+    case 0x34: // INR M
+    {
+      uint8_t aux = ReadHL(state) + 1;
+      ZSPFlags(state, aux);
+      WriteHL(state, aux);
+    }
     case 0x35: // DCR M
     {
       uint8_t aux = ReadHL(state) - 1;
@@ -587,7 +592,14 @@ int Emulate(State *state) {
       state->cc.cy = 1;
       break;
     case 0x38: UnimplementedInstruction(state); break;
-    case 0x39: UnimplementedInstruction(state); break;
+    case 0x39: // DAD SP
+    {
+      uint32_t hl = (state->h<<8) | (state->l);
+      uint32_t aux = hl + state->sp;
+      state->h = (aux & 0xff00)>>8;
+      state->l = (aux & 0xff); 
+      state->cc.cy = ((aux & 0xffff0000) > 0);
+    } break;
     case 0x3a: // LDA word
     {
       uint16_t offset = (opcode[2]<<8) | (opcode[1]); 
@@ -597,7 +609,10 @@ int Emulate(State *state) {
     case 0x3b: // DCX SP
       state->sp -= 1;
       break;
-    case 0x3c: UnimplementedInstruction(state); break;
+    case 0x3c: // INR A
+      state->a++;
+      ZSPFlags(state, state->a);
+      break;
     case 0x3d: // DCR A
       state->a -= 1;
       ZSPFlags(state, state->a);
