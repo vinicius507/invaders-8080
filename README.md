@@ -23,10 +23,8 @@ DEBUG=1 ./machine.out path/to/invaders
 
 **TODO**
 ----
-- [BUG] Verify all instructions.
+- [BUG] There's a bug where a game won't start(not even in attract mode), it goes right back to the main screen.
 - Finish Space Invaders Emulation(display, audio, input, etc.).
-  - Managed to finish display. Now going to input, audio, etc. 
-  - Gotta change IN/OUT instructions.
 - When I'm set to try out full intel 8080 CPU emulation, test using `coudiag` found in this [website](https://brainwagon.org/2011/09/08/more-on-my-8080-emulator/).
 
 **RESOURCES**
