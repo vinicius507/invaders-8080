@@ -2,6 +2,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+uint64_t instruction_num = 0;
+
 void Update(Machine* machine) {
   for (int i = 0; i < 256 * 224 / 8; i++) {
     const int y = i * 8 / 256;
@@ -152,7 +154,7 @@ void MachineIN (Machine* machine, uint8_t port) {
       break;
   }
 
-  machine->state->pc++;
+  machine->state->pc += 2;
 }
 
 void MachineOUT (Machine* machine, uint8_t port) {
@@ -172,14 +174,13 @@ void MachineOUT (Machine* machine, uint8_t port) {
       break;
   }
 
-  machine->state->pc++;
+  machine->state->pc += 2;
 }
 
 void doCPU(Machine* machine) {
   int cycles = CYCLES_PER_UPDATE;
-  int instruction_num = 0;
   while (cycles > 0) {
-    uint8_t* opcode = &machine->state->memory[machine->state->pc];
+    uint8_t *opcode = &machine->state->memory[machine->state->pc];
 
     if (*opcode == 0xdb) {
       uint8_t port = opcode[1];
@@ -188,7 +189,6 @@ void doCPU(Machine* machine) {
     } else if (*opcode == 0xd3) {
       uint8_t port = opcode[1];
       MachineOUT(machine, port);
-      machine->state->pc++;
       cycles -= 3;
     } else {
       cycles -= Emulate(machine->state);
