@@ -1130,7 +1130,7 @@ int Emulate(State *state) {
     case 0xf0: UnimplementedInstruction(state); break;
     case 0xf1:  // POP PSW
     {
-      uint8_t psw = 11;
+      uint8_t psw;
       Pop(state, &state->a, &psw);
       state->cc.cy = (0x01 == (psw & 0x01));
       state->cc.p = (0x04 == (psw & 0x04));
