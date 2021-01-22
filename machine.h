@@ -4,7 +4,6 @@
 #include <SDL2/SDL.h>
 #include "8080.h"
 
-#define DEBUG getenv("DEBUG")
 #define HEIGHT 256
 #define WIDTH 224 
 #define FPS 60

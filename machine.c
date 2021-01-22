@@ -51,7 +51,7 @@ void Update(Machine* machine) {
       machine->display.texture,
       NULL,
       &machine->display.buffer,
-      pitch) != 0;
+      pitch);
 }
 
 Machine* InitMachine(char* filename) {
@@ -192,13 +192,6 @@ void doCPU(Machine* machine) {
       cycles -= 3;
     } else {
       cycles -= Emulate(machine->state);
-    }
-
-    if (DEBUG) {
-      instruction_num++;
-      printf("Instruction: %d\n", instruction_num);
-      printf("\ta %02X bc %02X%02X de %02X%02X hl %02X%02X pc %04X sp %04X memory[sp] %04X\n", machine->state->a, machine->state->b, machine->state->c, machine->state->d, machine->state->e, machine->state->h, machine->state->l, machine->state->pc, machine->state->sp, ((machine->state->memory[machine->state->sp + 1] << 8) | (machine->state->memory[machine->state->sp] - 2)));
-      printf("\t%s %s %s %s %s %s\n", machine->state->cc.z ? "z" : ".", machine->state->cc.s ? "s" : ".", machine->state->cc.cy ? "cy" : ".", machine->state->cc.p ? "p" : ".", machine->state->cc.ac ? "ac" : ".", machine->state->int_enable ? "i" : ".");
     }
   }
 }
