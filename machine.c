@@ -2,6 +2,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+int debug = 0;
+
 uint64_t instruction_num = 0;
 
 void Update(Machine* machine) {
@@ -181,6 +183,10 @@ void doCPU(Machine* machine) {
   int cycles = CYCLES_PER_UPDATE;
   while (cycles > 0) {
     uint8_t *opcode = &machine->state->memory[machine->state->pc];
+		if (debug > 0) {
+			Disassemble(machine->state->memory, machine->state->pc);
+			debug--;
+		}
 
     if (*opcode == 0xdb) {
       uint8_t port = opcode[1];
@@ -223,6 +229,7 @@ int main (int argc, char* argv[]) {
           case SDLK_SPACE:
             machine->port1 = machine->port1 | 1<<4;  // P1,2 shoot
             machine->port2 = machine->port2 | 1<<4;
+						debug = 1000;
             break;
           case SDLK_LEFT:
             machine->port1 = machine->port1 | 1<<5;  // P1,2 joystick left

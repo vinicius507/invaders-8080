@@ -1139,7 +1139,7 @@ int Emulate(State *state) {
     case 0xf4: UnimplementedInstruction(state); break;
     case 0xf5:  // PUSH PSW
     {
-      uint8_t psw = ( state->cc.cy 
+      uint8_t psw = ( state->cc.cy<<0 
                     | 0x01<<1
                     | state->cc.p<<2 
                     | 0x00<<3
